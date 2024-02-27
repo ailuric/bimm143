@@ -1,0 +1,51 @@
+---
+title: "hw class06 r functions"
+author: "amy (pid A16962111)"
+format: pdf
+editor: visual
+---
+
+## original code
+
+```{r}
+library(bio3d)
+s1 <- read.pdb("4AKE") # kinase with drug
+s2 <- read.pdb("1AKE") # kinase no drug
+s3 <- read.pdb("1E4Y") # kinase with drug
+s1.chainA <- trim.pdb(s1, chain="A", elety="CA")
+s2.chainA <- trim.pdb(s2, chain="A", elety="CA")
+s3.chainA <- trim.pdb(s1, chain="A", elety="CA")
+s1.b <- s1.chainA$atom$b
+s2.b <- s2.chainA$atom$b
+s3.b <- s3.chainA$atom$b
+plotb3(s1.b, sse=s1.chainA, typ="l", ylab="Bfactor")
+plotb3(s2.b, sse=s2.chainA, typ="l", ylab="Bfactor")
+plotb3(s3.b, sse=s3.chainA, typ="l", ylab="Bfactor")
+```
+
+## new `protein_drug_interactions_analysis` function
+
+-   Input: any PDB file
+
+-   What it does and how to use it: analyzes protein-drug interactions by creating a plot of Bfactor trends and secondary structure from protein structure data. To use, call the function and enter any PDB code in `""` ; e.g. `protein_drug_interactions_analysis("4AKE")`
+
+-   Output: a lineplot of Bfactor trends with marginal rectangles representing secondary structure
+
+```{r}
+protein_drug_interactions_analysis <- function(x) {
+  # read protein structure file
+  s <- read.pdb(x)
+  # select calcium atoms in chain A
+  s.chainA <- trim.pdb(s, chain="A", elety="CA")
+  # save Bfactor data
+  s.b <- s.chainA$atom$b
+  # create a lineplot of Bfactor trends with marginal rectangles representing secondary structure
+  plotb3(s.b, sse=s.chainA, typ="l", ylab="Bfactor")
+}
+```
+
+## example output
+
+```{r}
+protein_drug_interactions_analysis("4AKE")
+```
