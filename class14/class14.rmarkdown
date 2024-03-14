@@ -5,13 +5,17 @@ format: md
 editor: visual
 ---
 
+
 Run a complete RNAseq analysis workflow from counts to enriched genesets
+
 
 ```{r}
 library(DESeq2)
 ```
 
+
 ## data import
+
 
 ```{r}
 metadata <- read.csv("GSE37704_metadata.csv")
@@ -21,20 +25,26 @@ head(counts)
 head(metadata)
 ```
 
+
 Need to remove the `counts$length` column
+
 
 ```{r}
 counts <- counts[,-1]
 head(counts)
 ```
 
+
 Now check if the metadata and count data match
+
 
 ```{r}
 all(colnames(counts)==metadata$ids)
 ```
 
+
 We need to remove all zero count genes. To do this, we can sum across the rows and check if the sum is more than zero.
+
 
 ```{r}
 genes.to.keep <- rowSums(counts)>0
@@ -42,7 +52,9 @@ nonzerocounts <- counts[genes.to.keep,]
 head(nonzerocounts)
 ```
 
+
 ## DESeq setup and analysis
+
 
 ```{r}
 dds <- DESeqDataSetFromMatrix(countData=nonzerocounts,
@@ -57,7 +69,9 @@ res <- results(dds, contrast=c("condition", "hoxa1_kd", "control_sirna"))
 summary(res)
 ```
 
+
 ### volcano plot
+
 
 ```{r}
 plot(res$log2FoldChange,-log(res$padj))
@@ -71,7 +85,9 @@ mycols[ inds ] <- "blue"
 plot( res$log2FoldChange, -log(res$padj), col=mycols, xlab="Log2(FoldChange)", ylab="-Log(P-value)" )
 ```
 
+
 ## gene annotation
+
 
 ```{r}
 library("AnnotationDbi")
@@ -106,7 +122,9 @@ res <- res[order(res$pvalue),]
 write.csv(res, file="deseq_results.csv")
 ```
 
+
 ## pathway analysis
+
 
 ```{r}
 library(pathview)
@@ -137,9 +155,11 @@ head(keggres$less)
 pathview(gene.data=foldchanges, pathway.id="hsa04110")
 ```
 
+
 ![](hsa04110.pathview.png)
 
 Focus on top 5 upregulated pathways here for demo purposes
+
 
 ```{r}
 keggrespathways <- rownames(keggres$greater)[1:5]
@@ -148,6 +168,7 @@ keggresids = substr(keggrespathways, start=1, stop=8)
 keggresids
 pathview(gene.data=foldchanges, pathway.id=keggresids, species="hsa")
 ```
+
 
 ![](hsa00140.pathview.png)
 
@@ -161,6 +182,7 @@ pathview(gene.data=foldchanges, pathway.id=keggresids, species="hsa")
 
 ## using gene ontology (GO)
 
+
 ```{r}
 data(go.sets.hs)
 data(go.subs.hs)
@@ -171,18 +193,23 @@ gobpres <- gage(foldchanges, gsets=gobpsets, same.dir=TRUE)
 lapply(gobpres, head)
 ```
 
+
 ## reactome analysis
 
 We can use reactome via an R package or use their relatively new website interface. Let's use the latter.
 
 It wants a list of our most interesting/significant genes in gene SYMBOL format.
 
+
 ```{r}
 sig_genes <- res[res$padj <= 0.05 & !is.na(res$padj), "symbol"]
 ```
 
+
 We will write these out to a file so we can use them on the website
+
 
 ```{r}
 write.table(sig_genes, file="significant_genes.txt", row.names=FALSE, col.names=FALSE, quote=FALSE)
 ```
+

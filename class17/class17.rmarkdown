@@ -5,7 +5,9 @@ format: md
 editor: visual
 ---
 
+
 ## downstream analysis of Kallisto results
+
 
 ```{r}
 #BiocManager::install("tximport")
@@ -22,40 +24,52 @@ txi.kallisto <- tximport(files, type = "kallisto", txOut = TRUE)
 head(txi.kallisto$counts)
 ```
 
+
 See how many transcripts per sample
+
 
 ```{r}
 colSums(txi.kallisto$counts)
 ```
 
+
 ... and how many are detected in at least one sample
+
 
 ```{r}
 sum(rowSums(txi.kallisto$counts)>0)
 ```
 
+
 Filter out annotated transcripts with no reads
+
 
 ```{r}
 to.keep <- rowSums(txi.kallisto$counts) > 0
 kset.nonzero <- txi.kallisto$counts[to.keep,]
 ```
 
+
 and those with no change over the samples
+
 
 ```{r}
 keep2 <- apply(kset.nonzero,1,sd)>0
 x <- kset.nonzero[keep2,]
 ```
 
+
 ### principal component analysis
+
 
 ```{r}
 pca <- prcomp(t(x), scale=TRUE)
 summary(pca)
 ```
 
+
 Initial visualization
+
 
 ```{r}
 plot(pca$x[,1], pca$x[,2],
@@ -63,7 +77,9 @@ plot(pca$x[,1], pca$x[,2],
      xlab="PC1", ylab="PC2", pch=16)
 ```
 
+
 Use ggplot to make a PC1 vs PC2 plot
+
 
 ```{r}
 library(ggplot2)
@@ -84,7 +100,9 @@ ggplot(y) +
   theme_bw()
 ```
 
+
 PC1 vs PC3
+
 
 ```{r}
 ggplot(y) +
@@ -94,7 +112,9 @@ ggplot(y) +
   theme_bw()
 ```
 
+
 PC2 vs PC3
+
 
 ```{r}
 ggplot(y) +
@@ -104,7 +124,9 @@ ggplot(y) +
   theme_bw()
 ```
 
+
 ## differential expression analysis
+
 
 ```{r}
 library(DESeq2)
@@ -121,7 +143,9 @@ res <- results(dds)
 head(res)
 ```
 
+
 ### volcano plot
+
 
 ```{r}
 plot(res$log2FoldChange,-log(res$padj))
@@ -134,3 +158,4 @@ inds <- (res$padj<0.01) & (abs(res$log2FoldChange) > 2 )
 mycols[ inds ] <- "blue"
 plot( res$log2FoldChange, -log(res$padj), col=mycols, xlab="Log2(FoldChange)", ylab="-Log(res$padj)" )
 ```
+
