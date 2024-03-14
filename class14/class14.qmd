@@ -1,0 +1,188 @@
+---
+title: "class14: RNAseq mini project"
+author: "amy (pid A16962111)"
+format: pdf
+editor: visual
+---
+
+Run a complete RNAseq analysis workflow from counts to enriched genesets
+
+```{r}
+library(DESeq2)
+```
+
+## data import
+
+```{r}
+metadata <- read.csv("GSE37704_metadata.csv")
+counts <- read.csv("GSE37704_featurecounts.csv", row.names = 1)
+
+head(counts)
+head(metadata)
+```
+
+Need to remove the `counts$length` column
+
+```{r}
+counts <- counts[,-1]
+head(counts)
+```
+
+Now check if the metadata and count data match
+
+```{r}
+all(colnames(counts)==metadata$ids)
+```
+
+We need to remove all zero count genes. To do this, we can sum across the rows and check if the sum is more than zero.
+
+```{r}
+genes.to.keep <- rowSums(counts)>0
+nonzerocounts <- counts[genes.to.keep,]
+head(nonzerocounts)
+```
+
+## DESeq setup and analysis
+
+```{r}
+dds <- DESeqDataSetFromMatrix(countData=nonzerocounts,
+                             colData=metadata,
+                             design=~condition)
+dds <- DESeq(dds)
+dds
+```
+
+```{r}
+res <- results(dds, contrast=c("condition", "hoxa1_kd", "control_sirna"))
+summary(res)
+```
+
+### volcano plot
+
+```{r}
+plot(res$log2FoldChange,-log(res$padj))
+```
+
+```{r}
+mycols <- rep("gray", nrow(res))
+mycols[ abs(res$log2FoldChange) > 2 ] <- "red"
+inds <- (res$padj<0.01) & (abs(res$log2FoldChange) > 2 )
+mycols[ inds ] <- "blue"
+plot( res$log2FoldChange, -log(res$padj), col=mycols, xlab="Log2(FoldChange)", ylab="-Log(P-value)" )
+```
+
+## gene annotation
+
+```{r}
+library("AnnotationDbi")
+library("org.Hs.eg.db")
+columns(org.Hs.eg.db)
+```
+
+```{r}
+res$symbol <- mapIds(org.Hs.eg.db,
+                    keys=row.names(res), 
+                    keytype="ENSEMBL",
+                    column="SYMBOL",
+                    multiVals="first")
+
+res$entrez <- mapIds(org.Hs.eg.db,
+                    keys=row.names(res),
+                    keytype="ENSEMBL",
+                    column="ENTREZID",
+                    multiVals="first")
+
+res$name <- mapIds(org.Hs.eg.db,
+                    keys=row.names(res),
+                    keytype="ENSEMBL",
+                    column="GENENAME",
+                    multiVals="first")
+
+head(res, 10)
+```
+
+```{r}
+res <- res[order(res$pvalue),]
+write.csv(res, file="deseq_results.csv")
+```
+
+## pathway analysis
+
+```{r}
+library(pathview)
+library(gage)
+library(gageData)
+
+data(kegg.sets.hs)
+data(sigmet.idx.hs)
+
+# Focus on signaling and metabolic pathways only
+kegg.sets.hs <- kegg.sets.hs[sigmet.idx.hs]
+head(kegg.sets.hs, 3)
+```
+
+```{r}
+foldchanges <- res$log2FoldChange
+names(foldchanges) <- res$entrez
+head(foldchanges)
+```
+
+```{r}
+keggres <- gage(foldchanges, gsets=kegg.sets.hs)
+attributes(keggres)
+head(keggres$less)
+```
+
+```{r}
+pathview(gene.data=foldchanges, pathway.id="hsa04110")
+```
+
+![](hsa04110.pathview.png)
+
+Focus on top 5 upregulated pathways here for demo purposes
+
+```{r}
+keggrespathways <- rownames(keggres$greater)[1:5]
+# Extract the 8 character long IDs part of each string
+keggresids = substr(keggrespathways, start=1, stop=8)
+keggresids
+pathview(gene.data=foldchanges, pathway.id=keggresids, species="hsa")
+```
+
+![](hsa00140.pathview.png)
+
+![](hsa04142.pathview.png)
+
+![](hsa04330.pathview.png)
+
+![](hsa04630.pathview.png)
+
+![](hsa04640.pathview.png)
+
+## using gene ontology (GO)
+
+```{r}
+data(go.sets.hs)
+data(go.subs.hs)
+
+# Focus on Biological Process subset of GO
+gobpsets <- go.sets.hs[go.subs.hs$BP]
+gobpres <- gage(foldchanges, gsets=gobpsets, same.dir=TRUE)
+lapply(gobpres, head)
+```
+
+## reactome analysis
+
+We can use reactome via an R package or use their relatively new website interface. Let's use the latter.
+
+It wants a list of our most interesting/significant genes in gene SYMBOL format.
+
+```{r}
+sig_genes <- res[res$padj <= 0.05 & !is.na(res$padj), "symbol"]
+```
+
+We will write these out to a file so we can use them on the website
+
+```{r}
+write.table(sig_genes, file="significant_genes.txt", row.names=FALSE, col.names=FALSE, quote=FALSE)
+```
