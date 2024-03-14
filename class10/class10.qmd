@@ -1,0 +1,106 @@
+---
+title: "class10 structural bioinformatics p1"
+author: "amy (pid A16962111)"
+format: pdf
+editor: visual
+---
+
+# the PDB database
+
+Here we examine the size and composition of the main database of biomolecular structures - the PDB.
+
+Get a CSV file from the PDB database and read it into R.
+
+```{r}
+pdbstats <- read.csv("Data Export Summary.csv", row.names=1)
+pdbstats
+```
+
+-   **Q1:** What percentage of structures in the PDB are solved by X-Ray and Electron Microscopy.
+
+    My pbdstats dataframe has numbers with commas in them. This may cause us problems.
+
+    ```{r}
+    sum(as.numeric(pdbstats$X.ray, pdbstats$EM))
+    ```
+
+    We found a function called `gsub()` . I can use this to make a function that I can use for every column in the table.
+
+    ```{r}
+    commasum <- function(x) {
+      sum(as.numeric(gsub(",", "", x)))
+    }
+
+    totals <- apply(pdbstats, 2, commasum)
+    totals
+    ```
+
+    ```{r}
+    round(totals/totals["Total"]*100, 2)
+    ```
+
+    85% were solved by x-ray and 9% by EM.
+
+-   **Q2:** What proportion of structures in the PDB are protein?
+
+    ```{r}
+    commasum(pdbstats["Protein (only)", "Total"])/totals["Total"]*100
+    ```
+
+    87%
+
+-   **Q.** What fraction of Uniprot structures are represented in the PDB?
+
+    0.09%
+
+```{r}
+215684/249751891*100
+```
+
+# visualizing protein structure
+
+We will learn the basics of Mol\* (mol-star) homepage: <https://molstar.org/viewer/>
+
+We will play with PDB 1HSG:
+
+![HIV-Pr with a bound inhibitor](1HSG.png)
+
+![with ASP25 residues represented as ball-and-stick figures](1HSG%20copy.png)
+
+## back to R and working with PDB structures
+
+```{r}
+library(bio3d)
+hiv <- read.pdb("1hsg")
+hiv
+```
+
+```{r}
+head(hiv$atom)
+```
+
+```{r}
+pdbseq(hiv)
+```
+
+here we will do a normal mode analysis (NMA) to predict functional motions of a kinase protein
+
+```{r}
+adk <- read.pdb("6s36")
+adk
+```
+
+```{r}
+modes <- nma(adk)
+plot(modes)
+```
+
+Make a "movie" called a trajectory of predicted motions.
+
+```{r}
+mktrj(modes, file="adk_m7.pdb")
+```
+
+Then I can open this file in Mol\*
+
+![](ADK_M7.PDB_animate-trajectory.mp4)
