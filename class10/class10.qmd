@@ -1,7 +1,7 @@
 ---
 title: "class10 structural bioinformatics p1"
 author: "amy (pid A16962111)"
-format: pdf
+format: md
 editor: visual
 ---
 
