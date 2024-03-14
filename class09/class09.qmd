@@ -1,7 +1,7 @@
 ---
 title: "class09 halloween candy"
 author: "amy (pid A16962111)"
-format: pdf
+format: md
 editor: visual
 ---
 
@@ -34,9 +34,8 @@ head(candy)
     sum(candy$fruity)
     ```
 
-```{=html}
 <!-- -->
-```
+
 -   **Q3**. What is your favorite candy in the dataset and what is it’s `winpercent` value?
 
     ```{r}
@@ -77,9 +76,8 @@ skim(candy)
 
     A zero represents a `FALSE` and a one represents `TRUE`
 
-```{=html}
 <!-- -->
-```
+
 -   **Q8**. Plot a histogram of `winpercent` values
 
     ```{r}
@@ -140,9 +138,8 @@ skim(candy)
     row.names(head(candy[order(candy$winpercent, decreasing=TRUE),], n=5))
     ```
 
-```{=html}
 <!-- -->
-```
+
 -   library(dplyr)candy %\>% arrange(winpercent) %\>% head(5) %\>% row.names()**Q15**. Make a first barplot of candy ranking based on `winpercent` values.
 
     ```{r}
@@ -151,9 +148,8 @@ skim(candy)
       geom_col()
     ```
 
-```{=html}
 <!-- -->
-```
+
 -   **Q16**. This is quite ugly, use the `reorder()` function to get the bars sorted by `winpercent`?
 
     ```{r}
@@ -166,7 +162,7 @@ skim(candy)
 
 You can insert any image using this markdown syntax: \![optional caption\]()
 
-``` Markdown
+``` markdown
 ![](barplot1.png)
 ```
 
