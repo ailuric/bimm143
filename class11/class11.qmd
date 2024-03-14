@@ -1,0 +1,239 @@
+---
+title: "class11 structural bioinformatics p2"
+author: "amy (pid A16962111)"
+format: pdf
+editor: visual
+---
+
+## comparative structure analysis of adenylate kinase
+
+Here we will perform PCA on all of the adenylate kinase (Adk) structures in the PDB using the bio3d function `pca()`
+
+```{r}
+#install.packages("bio3d")
+#install.packages("devtools")
+#install.packages("BiocManager")
+
+#BiocManager::install("msa")
+#devtools::install_bitbucket("Grantlab/bio3d-view")
+```
+
+Use `get.seq()` to retrieve a query sequence (chain A of one Adk)
+
+```{r}
+library(bio3d)
+aa <- get.seq("1ake_A")
+```
+
+BLAST search:
+
+```{r}
+#b <- blast.pdb(aa)
+#hits <- plot(b)
+#head(hits$pdb.id)
+```
+
+```{r}
+hits <- NULL
+hits$pdb.id <- c('1AKE_A','6S36_A','6RZE_A','3HPR_A','1E4V_A','5EJE_A','1E4Y_A','3X2S_A','6HAP_A','6HAM_A','4K46_A','3GMT_A','4PZL_A')
+files <- get.pdb(hits$pdb.id, path="pdbs", split=TRUE, gzip=TRUE)
+```
+
+Use function `pdbaln()` to align and superpose ("fit") 13 identified related structures.
+
+```{r}
+pdbs <- pdbaln(files, fit = TRUE, exefile="msa")
+```
+
+```{r}
+ids <- basename.pdb(pdbs$id)
+#plot(pdbs, labels=ids)
+```
+
+Use function `pdb.annotate()` to annotate each structure to its source species.
+
+```{r}
+anno <- pdb.annotate(ids)
+unique(anno$source)
+anno
+```
+
+Perform PCA
+
+```{r}
+pc.xray <- pca(pdbs)
+plot(pc.xray)
+```
+
+Use `rmsd()` to cluster structures based on their pairwise structural deviation
+
+```{r}
+rd <- rmsd(pdbs)
+
+hc.rd <- hclust(dist(rd))
+grps.rd <- cutree(hc.rd, k=3)
+
+plot(pc.xray, 1:2, col="grey50", bg=grps.rd, pch=21, cex=1)
+```
+
+## custom analysis of ColabFold models
+
+Here we will perform a custom analysis on the results of running ColabFold on the following protein sequence query:
+
+> \>HIV-Pr-Dimer PQITLWQRPLVTIKIGGQLKEALLDTGADDTVLEEMSLPGRWKPKMIGGIGGFIKVRQYD QILIEICGHKAIGTVLVGPTPVNIIGRNLLTQIGCTLNF:PQITLWQRPLVTIKIGGQLK EALLDTGADDTVLEEMSLPGRWKPKMIGGIGGFIKVRQYDQILIEICGHKAIGTVLVGPT PVNIIGRNLLTQIGCTLNF
+
+```{r}
+results_dir <- "HIVPrDimer_23119"
+pdb_files <- list.files(path=results_dir,
+                        pattern="*.pdb",
+                        full.names = TRUE)
+basename(pdb_files)
+```
+
+```{r}
+pdbs <- pdbaln(pdb_files, fit=TRUE, exefile="msa")
+pdbs
+rd <- rmsd(pdbs, fit=T)
+range(rd)
+```
+
+Create a heatmap of RMSD matrix values
+
+```{r}
+#install.packages("pheatmap")
+library(pheatmap)
+colnames(rd) <- paste0("m",1:5)
+rownames(rd) <- paste0("m",1:5)
+pheatmap(rd)
+```
+
+Based on this plot, models 1 and 2 are the most similar, and models 1 and 5 are the most dissimilar.
+
+Next, plot pLDDT values across all models (saved in `pdbs$b` )
+
+```{r}
+# Read a reference PDB structure
+pdb <- read.pdb("1hsg")
+
+plotb3(pdbs$b[1,], typ="l", lwd=2, sse=pdb)
+points(pdbs$b[2,], typ="l", col="red")
+points(pdbs$b[3,], typ="l", col="blue")
+points(pdbs$b[4,], typ="l", col="darkgreen")
+points(pdbs$b[5,], typ="l", col="orange")
+abline(v=100, col="gray")
+```
+
+We can improve superposition by finding the most consistent “rigid core” common across all the models using `core.find()`
+
+```{r}
+core <- core.find(pdbs)
+core.inds <- print(core, vol=0.5)
+xyz <- pdbfit(pdbs, core.inds, outpath="corefit_structures")
+```
+
+Open the models with new superposition coordinates in Mol\* and color by pLDDT scores:
+
+![](Unknown.png)
+
+Examine RMSF, a measure of conformational variance, between positions of the structure.
+
+```{r}
+rf <- rmsf(xyz)
+
+plotb3(rf, sse=pdb)
+abline(v=100, col="gray", ylab="RMSF")
+```
+
+The first chain (left of residue 100) is more similar across models than chain 2.
+
+### predicted alignment error (PAE) for domains
+
+```{r}
+library(jsonlite)
+
+pae_files <- list.files(path=results_dir,
+                        pattern=".*model.*\\.json",
+                        full.names = TRUE)
+
+pae1 <- read_json(pae_files[1],simplifyVector = TRUE)
+pae5 <- read_json(pae_files[5],simplifyVector = TRUE)
+
+attributes(pae1)
+head(pae1$plddt)
+```
+
+Lower PAE scores indicate a better model. Model 1 is better than model 5.
+
+```{r}
+pae1$max_pae
+pae5$max_pae
+```
+
+Plot the N by N (where N is the number of residues) PAE scores
+
+Model1
+
+```{r}
+plot.dmat(pae1$pae, 
+          xlab="Residue Position (i)",
+          ylab="Residue Position (j)",
+          grid.col = "black",
+          zlim=c(0,30))
+```
+
+Model5
+
+```{r}
+plot.dmat(pae5$pae, 
+          xlab="Residue Position (i)",
+          ylab="Residue Position (j)",
+          grid.col = "black",
+          zlim=c(0,30))
+```
+
+We can see that the PAE scores for model 5 are high for residue positions i 101-200 vs j 1-100 and vice versa, meaning that model 5 does a poor job of predicting the alignment of the two chains with respect to each other.
+
+### residue conservation from alignment file
+
+```{r}
+aln_file <- list.files(path=results_dir,
+                       pattern=".a3m$",
+                        full.names = TRUE)
+aln_file
+aln <- read.fasta(aln_file[1], to.upper = TRUE)
+```
+
+How many sequences are in this alignment?
+
+5378 sequences
+
+```{r}
+dim(aln$ali)
+```
+
+Use function `conserv()` to score residue conservation
+
+```{r}
+sim <- conserv(aln)
+plotb3(sim[1:99], sse=trim.pdb(pdb, chain="A"),
+       ylab="Conservation Score")
+```
+
+The highest conservation scores are for residues 25-28
+
+```{r}
+con <- consensus(aln, cutoff = 0.9)
+con$seq
+```
+
+To highlight these conserved residues (like have functional importance):
+
+```{r}
+m1.pdb <- read.pdb(pdb_files[1])
+occ <- vec2resno(c(sim[1:99], sim[1:99]), m1.pdb$atom$resno)
+write.pdb(m1.pdb, o=occ, file="m1_conserv.pdb")
+```
+
+View in Mol\* and color by occupancy. The dark purple region shows the active site.
+
+![](M1_CONSERV.PDB.png)
