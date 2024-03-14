@@ -1,0 +1,18 @@
+this is just a text editor...
+pwd: print working directory
+ls: list files
+cd: change dir
+mkdir: make a new dir
+rm: remove/delete files
+nano: a very basic text editor
+
+instance ID:
+i-0fb566e193783ab20 (bimm143_amy)
+
+public IP:
+52.32.73.101
+
+Run this command, if necessary, to ensure your key is not publicly viewable.
+ chmod 400 "bimm143_amy2.pem"
+Connect to your instance using its Public DNS:
+ ec2-52-32-73-101.us-west-2.compute.amazonaws.com

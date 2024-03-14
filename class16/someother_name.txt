@@ -1,0 +1,7 @@
+this is just a text editor...
+pwd: print working directory
+ls: list files
+cd: change dir
+mkdir: make a new dir
+rm: remove/delete files
+nano: a very basic text editor
